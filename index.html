@@ -15,7 +15,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #f0f0f0;
+            background-color: #333333; /* Темно-серый фон, как в Grok */
         }
         #sparkButton {
             width: 100px;
@@ -35,18 +35,12 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 10;
         }
         #sparkButton:hover {
             transform: translate(-50%, -50%) scale(1.1);
         }
         #sparkButton:active {
             transform: translate(-50%, -50%) scale(0.95);
-        }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
         }
     </style>
 </head>
@@ -56,15 +50,12 @@
         let particles = [];
 
         function setup() {
-            createCanvas(windowWidth, windowHeight, WEBGL);
+            createCanvas(windowWidth, windowHeight);
             noStroke();
         }
 
         function draw() {
-            background(240, 240, 240, 50);
-            lights(); // Добавлено освещение для объёма
-            ambientLight(60);
-            directionalLight(255, 255, 255, 0, 0, -1);
+            background(51, 51, 51, 50); /* Темно-серый фон для холста, согласован с Grok */
             for (let i = particles.length - 1; i >= 0; i--) {
                 let p = particles[i];
                 p.update();
@@ -75,69 +66,29 @@
             }
         }
 
-        // Функция для рисования экструдированной 3D звезды с толщиной
-        function extrudedStar(x, y, z, radius1, radius2, npoints, thickness, rotationX, rotationY, rotationZ, col, alpha) {
-            push();
-            translate(x, y, z);
-            rotateX(rotationX);
-            rotateY(rotationY);
-            rotateZ(rotationZ);
-            ambientMaterial(col); // Материал для цвета и освещения
-
-            // Вычисление вершин звезды
+        // Функция для рисования пятиконечной звезды
+        function star(x, y, radius1, radius2, npoints) {
             let angle = TWO_PI / npoints;
             let halfAngle = angle / 2.0;
-            let vertices = [];
-            for (let a = 0; a < TWO_PI; a += angle) {
-                let sx = cos(a) * radius2;
-                let sy = sin(a) * radius2;
-                vertices.push(createVector(sx, sy));
-                sx = cos(a + halfAngle) * radius1;
-                sy = sin(a + halfAngle) * radius1;
-                vertices.push(createVector(sx, sy));
-            }
-
-            // Передняя грань
-            fill(red(col), green(col), blue(col), alpha);
             beginShape();
-            for (let v of vertices) {
-                vertex(v.x, v.y, thickness / 2);
+            for (let a = -PI / 2; a < TWO_PI - PI / 2; a += angle) {
+                let sx = x + cos(a) * radius2;
+                let sy = y + sin(a) * radius2;
+                vertex(sx, sy);
+                sx = x + cos(a + halfAngle) * radius1;
+                sy = y + sin(a + halfAngle) * radius1;
+                vertex(sx, sy);
             }
             endShape(CLOSE);
-
-            // Задняя грань
-            beginShape();
-            for (let v of vertices) {
-                vertex(v.x, v.y, -thickness / 2);
-            }
-            endShape(CLOSE);
-
-            // Боковые грани (для толщины)
-            beginShape(TRIANGLE_STRIP);
-            for (let i = 0; i < vertices.length + 1; i++) {
-                let v = vertices[i % vertices.length];
-                vertex(v.x, v.y, thickness / 2);
-                vertex(v.x, v.y, -thickness / 2);
-            }
-            endShape();
-
-            pop();
         }
 
         class Particle {
-            constructor(x, y, z = 0) {
-                this.pos = createVector(x - windowWidth / 2, y - windowHeight / 2, z);
-                this.vel = createVector(random(-7, 7), random(-7, 7), random(-7, 7));
-                this.size = random(15, 30);
-                this.thickness = random(5, 10); // Толщина звезды
+            constructor(x, y) {
+                this.pos = createVector(x, y);
+                this.vel = createVector(random(-7, 7), random(-7, 7));
+                this.size = random(10, 20);
                 this.alpha = 255;
                 this.color = color(random(100, 255), random(100, 255), random(100, 255));
-                this.rotationX = random(0, TWO_PI);
-                this.rotationY = random(0, TWO_PI);
-                this.rotationZ = random(0, TWO_PI);
-                this.rotationSpeedX = random(-0.05, 0.05);
-                this.rotationSpeedY = random(-0.05, 0.05);
-                this.rotationSpeedZ = random(-0.05, 0.05);
             }
 
             update() {
@@ -145,34 +96,23 @@
                 this.vel.mult(0.98);
                 this.alpha -= 1.5;
                 this.size *= 0.98;
-                this.thickness *= 0.98; // Уменьшение толщины со временем
-                this.rotationX += this.rotationSpeedX;
-                this.rotationY += this.rotationSpeedY;
-                this.rotationZ += this.rotationSpeedZ;
             }
 
             show() {
-                // Эффект свечения для смягчения краёв
-                for (let i = 0; i < 3; i++) {
-                    let glowAlpha = this.alpha * (1 - i * 0.3);
-                    let glowSize = this.size * (1 + i * 0.2);
-                    let glowThickness = this.thickness * (1 + i * 0.2);
-                    extrudedStar(this.pos.x, this.pos.y, this.pos.z, glowSize / 2.5, glowSize, 5, glowThickness, this.rotationX, this.rotationY, this.rotationZ, this.color, glowAlpha / 2); // Полупрозрачный для мягкости
-                }
-                // Основная звезда
-                extrudedStar(this.pos.x, this.pos.y, this.pos.z, this.size / 2.5, this.size, 5, this.thickness, this.rotationX, this.rotationY, this.rotationZ, this.color, this.alpha);
+                fill(red(this.color), green(this.color), blue(this.color), this.alpha);
+                star(this.pos.x, this.pos.y, this.size / 2, this.size, 5);
             }
 
             isFinished() {
-                return this.alpha <= 0 || this.size <= 0.3;
+                return this.alpha <= 0 || this.size <= 0.2;
             }
         }
 
         document.getElementById('sparkButton').addEventListener('click', function(event) {
             let x = event.clientX;
             let y = event.clientY;
-            for (let i = 0; i < 3; i++) {
-                particles.push(new Particle(x, y, random(-50, 50)));
+            for (let i = 0; i < 30; i++) {
+                particles.push(new Particle(x, y));
             }
         });
 
